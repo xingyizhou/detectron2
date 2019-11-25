@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 
+# flake8: noqa
+
 # Configuration file for the Sphinx documentation builder.
 #
 # This file does only contain a selection of the most common options. For a
@@ -30,7 +32,7 @@ from recommonmark.parser import CommonMarkParser
 
 sys.path.insert(0, os.path.abspath("../"))
 
-DEPLOY = False
+DEPLOY = os.environ.get("READTHEDOCS") == "True"
 
 
 # -- Project information -----------------------------------------------------
@@ -42,15 +44,30 @@ except ImportError:
         "torch",
         "torchvision",
         "torch.nn",
+        "torch.nn.parallel",
         "torch.distributed",
+        "torch.multiprocessing",
         "torch.autograd",
         "torch.autograd.function",
         "torch.nn.modules",
         "torch.nn.modules.utils",
+        "torch.utils",
+        "torch.utils.data",
+        "torchvision",
+        "torchvision.ops",
     ]:
         sys.modules[m] = mock.Mock(name=m)
 
-for m in ["cv2", "scipy", "portalocker", "detectron2._C", "pycocotools", "pycocotools.mask"]:
+for m in [
+    "cv2",
+    "scipy",
+    "portalocker",
+    "detectron2._C",
+    "pycocotools",
+    "pycocotools.mask",
+    "pycocotools.coco",
+    "pycocotools.cocoeval",
+]:
     sys.modules[m] = mock.Mock(name=m)
 sys.modules["cv2"].__version__ = "3.4"
 
@@ -93,6 +110,8 @@ napoleon_include_init_with_doc = True
 napoleon_include_special_with_doc = True
 napoleon_numpy_docstring = False
 napoleon_use_rtype = False
+autodoc_inherit_docstrings = False
+autodoc_member_order = "bysource"
 
 if DEPLOY:
     intersphinx_timeout = 10
@@ -102,6 +121,7 @@ else:
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3.6", None),
     "numpy": ("https://docs.scipy.org/doc/numpy/", None),
+    "torch": ("https://pytorch.org/docs/master/", None),
 }
 # -------------------------
 
@@ -221,13 +241,39 @@ texinfo_documents = [
 todo_include_todos = True
 
 
+_DEPRECATED_NAMES = set(["out_feature_channels", "out_feature_strides", "out_features"])
+
+
+def autodoc_skip_member(app, what, name, obj, skip, options):
+    # we hide something deliberately
+    if getattr(obj, "__HIDE_SPHINX_DOC__", False):
+        return True
+    # Hide some names that are deprecated or not intended to be used
+    if name in _DEPRECATED_NAMES:
+        return True
+    return None
+
+
+def url_resolver(url):
+    if ".html" not in url:
+        url = url.replace("../", "")
+        return "https://github.com/facebookresearch/detectron2/blob/master/" + url
+    else:
+        if DEPLOY:
+            return "http://detectron2.readthedocs.io/" + url
+        else:
+            return "/" + url
+
+
 def setup(app):
     from recommonmark.transform import AutoStructify
 
+    app.connect("autodoc-skip-member", autodoc_skip_member)
     # app.connect('autodoc-skip-member', autodoc_skip_member)
     app.add_config_value(
         "recommonmark_config",
-        {  # 'url_resolver': url_resolver,
+        {
+            "url_resolver": url_resolver,
             "auto_toc_tree_section": "Contents",
             "enable_math": True,
             "enable_inline_math": True,

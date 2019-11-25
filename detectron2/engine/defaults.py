@@ -3,7 +3,7 @@
 
 """
 This file contains components with some default boilerplate logic user may need
-in training / testing. They will not work for everyeone, but many users may find them useful.
+in training / testing. They will not work for everyone, but many users may find them useful.
 
 The behavior of functions/classes in this file is subject to change,
 since they are meant to represent the "common default behavior" people need in their projects.
@@ -132,7 +132,12 @@ def default_setup(cfg, args):
 class DefaultPredictor:
     """
     Create a simple end-to-end predictor with the given config.
-    The predictor takes an BGR image and produce a dict of predictions.
+    The predictor takes an BGR image, resizes it to the specified resolution,
+    runs the model and produces a dict of predictions.
+
+    This predictor takes care of model loading and input preprocessing for you.
+    If you'd like to do anything more fancy, please refer to its source code
+    as examples to build and use the model manually.
 
     Attributes:
         metadata (Metadata): the metadata of the underlying dataset, obtained from
@@ -193,7 +198,12 @@ class DefaultTrainer(SimpleTrainer):
     :class:`SimpleTrainer` are too much for research.
 
     The code of this class has been annotated about restrictive assumptions it mades.
-    When they do not work for you, you're encouraged to write your own training logic.
+    When they do not work for you, you're encouraged to:
+
+    1. Overwrite methods of this class, OR:
+    2. Use :class:`SimpleTrainer`, which only does minimal SGD training and
+       nothing else. You can then add your own hooks if needed. OR:
+    3. Write your own training loop similar to `tools/plain_train_net.py`.
 
     Also note that the behavior of this class, like other functions/classes in
     this file, is not stable, since it is meant to represent the "common default behavior".
@@ -227,7 +237,7 @@ class DefaultTrainer(SimpleTrainer):
         # Assume no other objects need to be checkpointed.
         # We can later make it checkpoint the stateful hooks
         self.checkpointer = DetectionCheckpointer(
-            # Assume you want to save checkpoits together with logs/statistics
+            # Assume you want to save checkpoints together with logs/statistics
             model,
             cfg.OUTPUT_DIR,
             optimizer=optimizer,
@@ -259,7 +269,8 @@ class DefaultTrainer(SimpleTrainer):
 
     def build_hooks(self):
         """
-        Build a list of default hooks.
+        Build a list of default hooks, including timing, evaluation,
+        checkpointing, lr scheduling, precise BN, writing events.
 
         Returns:
             list[HookBase]:
@@ -305,11 +316,25 @@ class DefaultTrainer(SimpleTrainer):
 
     def build_writers(self):
         """
-        Build a list of default writers, that write metrics to the screen,
+        Build a list of writers to be used. By default it contains
+        writers that write metrics to the screen,
         a json file, and a tensorboard event file respectively.
+        If you'd like a different list of writers, you can overwrite it in
+        your trainer.
 
         Returns:
-            list[Writer]: a list of objects that have a ``.write`` method.
+            list[EventWriter]: a list of :class:`EventWriter` objects.
+
+        It is now implemented by:
+
+        .. code-block:: python
+
+            return [
+                CommonMetricPrinter(self.max_iter),
+                JSONWriter(os.path.join(self.cfg.OUTPUT_DIR, "metrics.json")),
+                TensorboardXWriter(self.cfg.OUTPUT_DIR),
+            ]
+
         """
         # Assume the default print/log frequency.
         return [
@@ -336,6 +361,9 @@ class DefaultTrainer(SimpleTrainer):
         """
         Returns:
             torch.nn.Module:
+
+        It now calls :func:`detectron2.modeling.build_model`.
+        Overwrite it if you'd like a different model.
         """
         model = build_model(cfg)
         logger = logging.getLogger(__name__)
@@ -347,11 +375,18 @@ class DefaultTrainer(SimpleTrainer):
         """
         Returns:
             torch.optim.Optimizer:
+
+        It now calls :func:`detectron2.solver.build_optimizer`.
+        Overwrite it if you'd like a different optimizer.
         """
         return build_optimizer(cfg, model)
 
     @classmethod
     def build_lr_scheduler(cls, cfg, optimizer):
+        """
+        It now calls :func:`detectron2.solver.build_lr_scheduler`.
+        Overwrite it if you'd like a different scheduler.
+        """
         return build_lr_scheduler(cfg, optimizer)
 
     @classmethod
@@ -359,6 +394,9 @@ class DefaultTrainer(SimpleTrainer):
         """
         Returns:
             iterable
+
+        It now calls :func:`detectron2.data.build_detection_train_loader`.
+        Overwrite it if you'd like a different data loader.
         """
         return build_detection_train_loader(cfg)
 
@@ -367,6 +405,9 @@ class DefaultTrainer(SimpleTrainer):
         """
         Returns:
             iterable
+
+        It now calls :func:`detectron2.data.build_detection_test_loader`.
+        Overwrite it if you'd like a different data loader.
         """
         return build_detection_test_loader(cfg, dataset_name)
 
@@ -375,8 +416,13 @@ class DefaultTrainer(SimpleTrainer):
         """
         Returns:
             DatasetEvaluator
+
+        It is not implemented by default.
         """
-        raise NotImplementedError
+        raise NotImplementedError(
+            "Please either implement `build_evaluator()` in subclasses, or pass "
+            "your evaluator as arguments to `DefaultTrainer.test()`."
+        )
 
     @classmethod
     def test(cls, cfg, model, evaluators=None):
@@ -404,11 +450,18 @@ class DefaultTrainer(SimpleTrainer):
             data_loader = cls.build_test_loader(cfg, dataset_name)
             # When evaluators are passed in as arguments,
             # implicitly assume that evaluators can be created before data_loader.
-            evaluator = (
-                evaluators[idx]
-                if evaluators is not None
-                else cls.build_evaluator(cfg, dataset_name)
-            )
+            if evaluators is not None:
+                evaluator = evaluators[idx]
+            else:
+                try:
+                    evaluator = cls.build_evaluator(cfg, dataset_name)
+                except NotImplementedError:
+                    logger.warn(
+                        "No evaluator found. Use `DefaultTrainer.test(evaluators=)`, "
+                        "or implement its `build_evaluator` method."
+                    )
+                    results[dataset_name] = {}
+                    continue
             results_i = inference_on_dataset(model, data_loader, evaluator)
             results[dataset_name] = results_i
             if comm.is_main_process():

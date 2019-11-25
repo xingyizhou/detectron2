@@ -7,6 +7,9 @@ from setuptools import find_packages, setup
 import torch
 from torch.utils.cpp_extension import CUDA_HOME, CppExtension, CUDAExtension
 
+torch_ver = [int(x) for x in torch.__version__.split(".")[:2]]
+assert torch_ver >= [1, 3], "Requires PyTorch >= 1.3"
+
 
 def get_extensions():
     this_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,7 +17,9 @@ def get_extensions():
 
     main_source = os.path.join(extensions_dir, "vision.cpp")
     sources = glob.glob(os.path.join(extensions_dir, "**", "*.cpp"))
-    source_cuda = glob.glob(os.path.join(extensions_dir, "**", "*.cu"))
+    source_cuda = glob.glob(os.path.join(extensions_dir, "**", "*.cu")) + glob.glob(
+        os.path.join(extensions_dir, "*.cu")
+    )
 
     sources = [main_source] + sources
 
@@ -23,7 +28,7 @@ def get_extensions():
     extra_compile_args = {"cxx": []}
     define_macros = []
 
-    if torch.cuda.is_available() and CUDA_HOME is not None:
+    if (torch.cuda.is_available() and CUDA_HOME is not None) or os.getenv("FORCE_CUDA", "0") == "1":
         extension = CUDAExtension
         sources += source_cuda
         define_macros += [("WITH_CUDA", None)]
@@ -60,19 +65,22 @@ setup(
     name="detectron2",
     version="0.1",
     author="FAIR",
-    url="unknown",
-    description="object detection in pytorch",
+    url="https://github.com/facebookresearch/detectron2",
+    description="Detectron2 is FAIR's next-generation research "
+    "platform for object detection and segmentation.",
     packages=find_packages(exclude=("configs", "tests")),
+    python_requires=">=3.6",
     install_requires=[
         "termcolor>=1.1",
-        "Pillow",
+        "Pillow>=6.0",
         "yacs>=0.1.6",
         "tabulate",
         "cloudpickle",
         "matplotlib",
         "tqdm>4.29.0",
-        "shapely",
+        "tensorboard",
     ],
+    extras_require={"all": ["shapely", "psutil"]},
     ext_modules=get_extensions(),
     cmdclass={"build_ext": torch.utils.cpp_extension.BuildExtension},
 )

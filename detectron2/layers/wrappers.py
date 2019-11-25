@@ -36,12 +36,17 @@ class _NewEmptyTensorOp(torch.autograd.Function):
 
 
 class Conv2d(torch.nn.Conv2d):
+    """
+    A wrapper around :class:`torch.nn.Conv2d` to support zero-size tensor and more features.
+    """
+
     def __init__(self, *args, **kwargs):
         """
         Extra keyword arguments supported in addition to those in `torch.nn.Conv2d`:
 
-        norm (nn.Module, optional): a normalization layer
-        activation (callable(Tensor) -> Tensor): a callable activation function
+        Args:
+            norm (nn.Module, optional): a normalization layer
+            activation (callable(Tensor) -> Tensor): a callable activation function
 
         It assumes that norm layer is used before activation.
         """
@@ -88,6 +93,10 @@ class Conv2d(torch.nn.Conv2d):
 
 
 class ConvTranspose2d(torch.nn.ConvTranspose2d):
+    """
+    A wrapper around :class:`torch.nn.ConvTranspose2d` to support zero-size tensor.
+    """
+
     def forward(self, x):
         if x.numel() > 0:
             return super(ConvTranspose2d, self).forward(x)
@@ -104,7 +113,7 @@ class ConvTranspose2d(torch.nn.ConvTranspose2d):
                 self.output_padding,
             )
         ]
-        output_shape = [x.shape[0], self.bias.shape[0]] + output_shape
+        output_shape = [x.shape[0], self.out_channels] + output_shape
         # This is to make DDP happy.
         # DDP expects all workers to have gradient w.r.t the same set of parameters.
         _dummy = sum(x.view(-1)[0] for x in self.parameters()) * 0.0
@@ -112,6 +121,10 @@ class ConvTranspose2d(torch.nn.ConvTranspose2d):
 
 
 class BatchNorm2d(torch.nn.BatchNorm2d):
+    """
+    A wrapper around :class:`torch.nn.BatchNorm2d` to support zero-size tensor.
+    """
+
     def forward(self, x):
         if x.numel() > 0:
             return super(BatchNorm2d, self).forward(x)
@@ -121,6 +134,9 @@ class BatchNorm2d(torch.nn.BatchNorm2d):
 
 
 def interpolate(input, size=None, scale_factor=None, mode="nearest", align_corners=None):
+    """
+    A wrapper around :func:`torch.nn.functional.interpolate` to support zero-size tensor.
+    """
     if input.numel() > 0:
         return torch.nn.functional.interpolate(
             input, size, scale_factor, mode, align_corners=align_corners

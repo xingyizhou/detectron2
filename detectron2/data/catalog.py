@@ -19,7 +19,7 @@ class DatasetCatalog(object):
     format of `list[dict]`.
 
     The returned dicts should be in Detectron2 Dataset format (See DATASETS.md for details)
-    if used with the data loader functionatilities in `data/build.py,data/detection_transform.py`.
+    if used with the data loader functionalities in `data/build.py,data/detection_transform.py`.
 
     The purpose of having this catalog is to make it easy to choose
     different datasets, by just using the strings in the config.
@@ -34,6 +34,10 @@ class DatasetCatalog(object):
             name (str): the name that identifies a dataset, e.g. "coco_2014_train".
             func (callable): a callable which takes no arguments and returns a list of dicts.
         """
+        assert callable(func), "You must register a function with `DatasetCatalog.register`!"
+        assert name not in DatasetCatalog._REGISTERED, "Dataset '{}' is already registered!".format(
+            name
+        )
         DatasetCatalog._REGISTERED[name] = func
 
     @staticmethod
@@ -183,7 +187,7 @@ class MetadataCatalog:
 
         Returns:
             Metadata: The :class:`Metadata` instance associated with this name,
-                or create an empty one if none is available.
+            or create an empty one if none is available.
         """
         assert len(name)
         if name in MetadataCatalog._NAME_TO_META:

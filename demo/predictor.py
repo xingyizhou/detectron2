@@ -21,7 +21,9 @@ class VisualizationDemo(object):
             parallel (bool): whether to run the model in different processes from visualization.
                 Useful since the visualization logic can be slow.
         """
-        self.metadata = MetadataCatalog.get(cfg.DATASETS.TEST[0])
+        self.metadata = MetadataCatalog.get(
+            cfg.DATASETS.TEST[0] if len(cfg.DATASETS.TEST) else "__unused"
+        )
         self.cpu_device = torch.device("cpu")
         self.instance_mode = instance_mode
 
@@ -131,7 +133,7 @@ class AsyncPredictor:
     """
     A predictor that runs the model asynchronously, possibly on >1 GPUs.
     Because rendering the visualization takes considerably amount of time,
-    this helps improve thoughput when rendering videos.
+    this helps improve throughput when rendering videos.
     """
 
     class _StopToken:

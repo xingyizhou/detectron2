@@ -87,7 +87,7 @@ class VideoVisualizer:
         ]
         colors = self._assign_colors(detected)
 
-        labels = _create_text_labels(classes, scores, self.metadata.thing_classes)
+        labels = _create_text_labels(classes, scores, self.metadata.get("thing_classes", None))
 
         if self._instance_mode == ColorMode.IMAGE_BW:
             # any() returns uint8 tensor
@@ -114,7 +114,7 @@ class VideoVisualizer:
         Args:
             sem_seg (ndarray or Tensor): semantic segmentation of shape (H, W),
                 each value is the integer label.
-            area_threhold (Optional[int]): only draw segmentations larger than the threshold
+            area_threshold (Optional[int]): only draw segmentations larger than the threshold
         """
         # don't need to do anything special
         frame_visualizer = Visualizer(frame, self.metadata)

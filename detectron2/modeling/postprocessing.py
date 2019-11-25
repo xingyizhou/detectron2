@@ -32,8 +32,7 @@ def detector_postprocess(results, output_height, output_width, mask_threshold=0.
     elif results.has("proposal_boxes"):
         output_boxes = results.proposal_boxes
 
-    output_boxes.tensor[:, 0::2] *= scale_x
-    output_boxes.tensor[:, 1::2] *= scale_y
+    output_boxes.scale(scale_x, scale_y)
     output_boxes.clip(results.image_size)
 
     results = results[output_boxes.nonempty()]
@@ -69,7 +68,7 @@ def sem_seg_postprocess(result, img_size, output_height, output_width):
         output_height, output_width: the desired output resolution.
 
     Returns:
-        semantic segmenation prediction (Tensor): A tensor of the shape
+        semantic segmentation prediction (Tensor): A tensor of the shape
             (C, output_height, output_width) that contains per-pixel soft predictions.
     """
     result = result[:, : img_size[0], : img_size[1]].expand(1, -1, -1, -1)

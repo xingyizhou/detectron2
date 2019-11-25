@@ -8,6 +8,9 @@ import torch
 _DEFAULT_SCALE_CLAMP = math.log(1000.0 / 16)
 
 
+__all__ = ["Box2BoxTransform", "Box2BoxTransformRotated"]
+
+
 class Box2BoxTransform(object):
     """
     The box-to-box transform defined in R-CNN. The transformation is parameterized
@@ -32,7 +35,7 @@ class Box2BoxTransform(object):
         """
         Get box regression transformation deltas (dx, dy, dw, dh) that can be used
         to transform the `src_boxes` into the `target_boxes`. That is, the relation
-        `target_boxes == self.apply_deltas(deltas, src_boxes)` is true (unless
+        ``target_boxes == self.apply_deltas(deltas, src_boxes)`` is true (unless
         any delta is too large and is clamped).
 
         Args:
@@ -73,7 +76,7 @@ class Box2BoxTransform(object):
                 box transformations for the single box boxes[i].
             boxes (Tensor): boxes to transform, of shape (N, 4)
         """
-        assert torch.isfinite(deltas).all().item()
+        assert torch.isfinite(deltas).all().item(), "Box regression deltas become infinite or NaN!"
         boxes = boxes.to(deltas.dtype)
 
         widths = boxes[:, 2] - boxes[:, 0]
@@ -129,7 +132,7 @@ class Box2BoxTransformRotated(object):
         """
         Get box regression transformation deltas (dx, dy, dw, dh, da) that can be used
         to transform the `src_boxes` into the `target_boxes`. That is, the relation
-        `target_boxes == self.apply_deltas(deltas, src_boxes)` is true (unless
+        ``target_boxes == self.apply_deltas(deltas, src_boxes)`` is true (unless
         any delta is too large and is clamped).
 
         Args:
@@ -176,7 +179,7 @@ class Box2BoxTransformRotated(object):
             boxes (Tensor): boxes to transform, of shape (N, 5)
         """
         assert deltas.shape[1] == 5 and boxes.shape[1] == 5
-        assert torch.isfinite(deltas).all().item()
+        assert torch.isfinite(deltas).all().item(), "Box regression deltas become infinite or NaN!"
 
         boxes = boxes.to(deltas.dtype)
 

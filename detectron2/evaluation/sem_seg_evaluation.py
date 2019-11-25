@@ -42,8 +42,8 @@ class SemSegEvaluator(DatasetEvaluator):
         self._cpu_device = torch.device("cpu")
         self._logger = logging.getLogger(__name__)
 
-        self.image_id_to_gt_file = {
-            dataset_record["image_id"]: dataset_record["sem_seg_file_name"]
+        self.input_file_to_gt_file = {
+            dataset_record["file_name"]: dataset_record["sem_seg_file_name"]
             for dataset_record in DatasetCatalog.get(dataset_name)
         }
 
@@ -64,7 +64,7 @@ class SemSegEvaluator(DatasetEvaluator):
         Args:
             inputs: the inputs to a model.
                 It is a list of dicts. Each dict corresponds to an image and
-                contains keys like "height", "width", "file_name", "image_id".
+                contains keys like "height", "width", "file_name".
             outputs: the outputs of a model. It is either list of semantic segmentation predictions
                 (Tensor [H, W]) or list of dicts with key "sem_seg" that contains semantic
                 segmentation prediction in the same format.
@@ -72,7 +72,7 @@ class SemSegEvaluator(DatasetEvaluator):
         for input, output in zip(inputs, outputs):
             output = output["sem_seg"].argmax(dim=0).to(self._cpu_device)
             pred = np.array(output, dtype=np.int)
-            with PathManager.open(self.image_id_to_gt_file[input["image_id"]], "rb") as f:
+            with PathManager.open(self.input_file_to_gt_file[input["file_name"]], "rb") as f:
                 gt = np.array(Image.open(f), dtype=np.int)
 
             gt[gt == self._ignore_label] = self._num_classes
@@ -81,15 +81,16 @@ class SemSegEvaluator(DatasetEvaluator):
                 self._N * pred.reshape(-1) + gt.reshape(-1), minlength=self._N ** 2
             ).reshape(self._N, self._N)
 
-            self._predictions.extend(self.encode_json_sem_seg(pred, input["image_id"]))
+            self._predictions.extend(self.encode_json_sem_seg(pred, input["file_name"]))
 
     def evaluate(self):
         """
         Evaluates standard semantic segmentation metrics (http://cocodataset.org/#stuff-eval):
-            Mean intersection-over-union averaged across classes (mIoU)
-            Frequency Weighted IoU (fwIoU)
-            Mean pixel accuracy averaged across classes (mACC)
-            Pixel Accuracy (pACC)
+
+        * Mean intersection-over-union averaged across classes (mIoU)
+        * Frequency Weighted IoU (fwIoU)
+        * Mean pixel accuracy averaged across classes (mACC)
+        * Pixel Accuracy (pACC)
         """
         if self._distributed:
             synchronize()
@@ -139,9 +140,9 @@ class SemSegEvaluator(DatasetEvaluator):
         self._logger.info(results)
         return results
 
-    def encode_json_sem_seg(self, sem_seg, image_id):
+    def encode_json_sem_seg(self, sem_seg, input_file_name):
         """
-        Convert semenatic segmentation to COCO stuff format with segments encoded as RLEs.
+        Convert semantic segmentation to COCO stuff format with segments encoded as RLEs.
         See http://cocodataset.org/#format-results
         """
         json_list = []
@@ -157,6 +158,6 @@ class SemSegEvaluator(DatasetEvaluator):
             mask_rle = mask_util.encode(np.array(mask[:, :, None], order="F"))[0]
             mask_rle["counts"] = mask_rle["counts"].decode("utf-8")
             json_list.append(
-                {"image_id": image_id, "category_id": dataset_id, "segmentation": mask_rle}
+                {"file_name": input_file_name, "category_id": dataset_id, "segmentation": mask_rle}
             )
         return json_list

@@ -1,4 +1,5 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
+import copy
 import numpy as np
 from enum import Enum, unique
 from typing import Iterator, List, Tuple, Union
@@ -49,7 +50,7 @@ class BoxMode(Enum):
                 4,
             ), "BoxMode.convert takes either a 4-tuple/list or a Nx4 array/tensor"
         else:
-            arr = box
+            arr = copy.deepcopy(box)  # avoid modifying the input box
 
         assert to_mode.value < 2 and from_mode.value < 2, "Relative mode not yet supported!"
 
@@ -200,6 +201,13 @@ class Boxes:
             The box centers in a Nx2 array of (x, y).
         """
         return (self.tensor[:, :2] + self.tensor[:, 2:]) / 2
+
+    def scale(self, scale_x: float, scale_y: float) -> None:
+        """
+        Scale the box with horizontal and vertical scaling factors
+        """
+        self.tensor[:, 0::2] *= scale_x
+        self.tensor[:, 1::2] *= scale_y
 
     @staticmethod
     def cat(boxes_list: List["Boxes"]) -> "Boxes":

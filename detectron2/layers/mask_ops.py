@@ -82,8 +82,8 @@ def paste_masks_in_image(masks, boxes, image_shape, threshold=0.5):
 
     Returns:
         img_masks (Tensor): A tensor of shape (Bimg, Himage, Wimage), where Bimg is the
-            number of detected object instances and Himage, Wimage are the image width
-            and height. img_masks[i] is a binary mask for object instance i.
+        number of detected object instances and Himage, Wimage are the image width
+        and height. img_masks[i] is a binary mask for object instance i.
     """
     assert masks.shape[-1] == masks.shape[-2], "Only square mask predictions are supported"
     N = len(masks)
@@ -100,7 +100,7 @@ def paste_masks_in_image(masks, boxes, image_shape, threshold=0.5):
     # and paste them chunk by chunk.
     if device.type == "cpu":
         # CPU is most efficient when they are pasted one by one with skip_empty=True
-        # so that it performs minimal number of operatins.
+        # so that it performs minimal number of operations.
         num_chunks = N
     else:
         # GPU benefits from parallelism for larger chunks, but may have memory issue
