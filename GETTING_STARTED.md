@@ -11,12 +11,12 @@ existing model, and how to train a builtin model on a custom dataset.
 For more advanced tutorials, refer to our [documentation](https://detectron2.readthedocs.io/tutorials/extend.html).
 
 
-### Inference with Pre-trained Models
+### Inference Demo with Pre-trained Models
 
 1. Pick a model and its config file from
 	[model zoo](https://github.com/facebookresearch/detectron2/blob/master/MODEL_ZOO.md),
 	for example, `mask_rcnn_R_50_FPN_3x.yaml`.
-2. Run the demo with
+2. We provide `demo.py` that is able to run builtin standard models. Run it with:
 ```
 python demo/demo.py --config-file configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_3x.yaml \
   --input input1.jpg input2.jpg \
@@ -26,16 +26,17 @@ python demo/demo.py --config-file configs/COCO-InstanceSegmentation/mask_rcnn_R_
 The configs are made for training, therefore we need to specify `MODEL.WEIGHTS` to a model from model zoo for evaluation.
 This command will run the inference and show visualizations in an OpenCV window.
 
-For details of the command line arguments, see `demo.py -h`. Some common ones are:
+For details of the command line arguments, see `demo.py -h` or look at its source code
+to understand its behavior. Some common arguments are:
 * To run __on your webcam__, replace `--input files` with `--webcam`.
 * To run __on a video__, replace `--input files` with `--video-input video.mp4`.
 * To run __on cpu__, add `MODEL.DEVICE cpu` after `--opts`.
 * To save outputs to a directory (for images) or a file (for webcam or video), use `--output`.
 
 
-### Use Detectron2 in Command Line
+### Training & Evaluation in Command Line
 
-We provide a script in "tools/train_net.py", that is made to train
+We provide a script in "tools/{,plain_}train_net.py", that is made to train
 all the configs provided in detectron2.
 You may want to use it as a reference to write your own training script for a new research.
 
@@ -60,7 +61,7 @@ For most models, CPU training is not supported.
 (Note that we applied the [linear learning rate scaling rule](https://arxiv.org/abs/1706.02677)
 when changing the batch size.)
 
-To evaluate this model's performance, use
+To evaluate a model's performance, use
 ```
 python tools/train_net.py \
 	--config-file configs/COCO-InstanceSegmentation/mask_rcnn_R_50_FPN_1x.yaml \
@@ -68,7 +69,7 @@ python tools/train_net.py \
 ```
 For more options, see `python tools/train_net.py -h`.
 
-### Use Detectron2 in Your Code
+### Use Detectron2 APIs in Your Code
 
 See our [Colab Notebook](https://colab.research.google.com/drive/16jcaJoc6bCFAQ96jDe2HwtXj7BMD_-m5)
 to learn how to use detectron2 APIs to:

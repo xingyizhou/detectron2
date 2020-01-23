@@ -49,8 +49,9 @@ class FPN(Backbone):
         assert isinstance(bottom_up, Backbone)
 
         # Feature map strides and channels from the bottom up network (e.g. ResNet)
-        in_strides = [bottom_up.out_feature_strides[f] for f in in_features]
-        in_channels = [bottom_up.out_feature_channels[f] for f in in_features]
+        input_shapes = bottom_up.output_shape()
+        in_strides = [input_shapes[f].stride for f in in_features]
+        in_channels = [input_shapes[f].channels for f in in_features]
 
         _assert_strides_are_log2_contiguous(in_strides)
         lateral_convs = []
@@ -108,11 +109,11 @@ class FPN(Backbone):
     def forward(self, x):
         """
         Args:
-            input (dict[str: Tensor]): mapping feature map name (e.g., "res5") to
+            input (dict[str->Tensor]): mapping feature map name (e.g., "res5") to
                 feature map tensor for each feature level in high to low resolution order.
 
         Returns:
-            dict[str: Tensor]:
+            dict[str->Tensor]:
                 mapping from feature map name to FPN feature map tensor
                 in high to low resolution order. Returned feature names follow the FPN
                 paper convention: "p<stage>", where stage has stride = 2 ** stage e.g.,
@@ -232,7 +233,7 @@ def build_retinanet_resnet_fpn_backbone(cfg, input_shape: ShapeSpec):
     bottom_up = build_resnet_backbone(cfg, input_shape)
     in_features = cfg.MODEL.FPN.IN_FEATURES
     out_channels = cfg.MODEL.FPN.OUT_CHANNELS
-    in_channels_p6p7 = bottom_up.out_feature_channels["res5"]
+    in_channels_p6p7 = bottom_up.output_shape()["res5"].channels
     backbone = FPN(
         bottom_up=bottom_up,
         in_features=in_features,

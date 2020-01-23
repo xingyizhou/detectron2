@@ -9,7 +9,9 @@ API Documentation
     engine
     evaluation
     layers
+    model_zoo
     modeling
     solver
     structures
     utils
+    export

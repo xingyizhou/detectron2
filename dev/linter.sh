@@ -3,6 +3,10 @@
 
 # Run this script at project root by "./dev/linter.sh" before you commit
 
+vergte() {
+  [ "$2" = "$(echo -e "$1\n$2" | sort -V | head -n1)" ]
+}
+
 {
 	black --version | grep "19.3b0" > /dev/null
 } || {
@@ -10,10 +14,17 @@
 	exit 1
 }
 
+ISORT_TARGET_VERSION="4.3.21"
+ISORT_VERSION=$(isort -v | grep VERSION | awk '{print $2}')
+vergte "$ISORT_VERSION" "$ISORT_TARGET_VERSION" || {
+  echo "Linter requires isort>=${ISORT_TARGET_VERSION} !"
+  exit 1
+}
+
 set -v
 
 echo "Running isort ..."
-isort -y --multi-line 3 --trailing-comma -sp . --skip datasets --skip docs --skip-glob '*/__init__.py' --atomic
+isort -y -sp . --atomic
 
 echo "Running black ..."
 black -l 100 .

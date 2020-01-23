@@ -46,7 +46,7 @@ will load the image from "file_name" and load "sem_seg" from "sem_seg_file_name"
 + `file_name`: the full path to the image file. Will apply rotation and flipping if the image has such exif information.
 + `sem_seg_file_name`: the full path to the ground truth semantic segmentation file.
 + `sem_seg`: semantic segmentation ground truth in a 2D `torch.Tensor`. Values in the array represent
-   category labels.
+   category labels starting from 0.
 + `height`, `width`: integer. The shape of image.
 + `image_id` (str or int): a unique id that identifies this image. Used
 	during evaluation to identify the images, but a dataset may use it for different purposes.
@@ -64,7 +64,8 @@ will load the image from "file_name" and load "sem_seg" from "sem_seg_file_name"
       of the object. Each `list[float]` is one simple polygon in the format of `[x1, y1, ..., xn, yn]`.
       The Xs and Ys are either relative coordinates in [0, 1], or absolute coordinates,
       depend on whether "bbox_mode" is relative.
-    + If `dict`, it represents the per-pixel segmentation mask in COCO's RLE format.
+    + If `dict`, it represents the per-pixel segmentation mask in COCO's RLE format. The dict should have
+			keys "size" and "counts".
   + `keypoints` (list[float]): in the format of [x1, y1, v1,..., xn, yn, vn].
     v[i] means the [visibility](http://cocodataset.org/#format-data) of this keypoint.
     `n` must be equal to the number of keypoint categories.
@@ -74,7 +75,8 @@ will load the image from "file_name" and load "sem_seg" from "sem_seg_file_name"
     Note that the coordinate annotations in COCO format are integers in range [0, H-1 or W-1].
     By default, detectron2 adds 0.5 to absolute keypoint coordinates to convert them from discrete
     pixel indices to floating point coordinates.
-  + `iscrowd`: 0 or 1. Whether this instance is labeled as COCO's "crowd region".
+  + `iscrowd`: 0 or 1. Whether this instance is labeled as COCO's "crowd
+    region". Don't include this field if you don't know what it means.
 + `proposal_boxes` (array): 2D numpy array with shape (K, 4) representing K precomputed proposal boxes for this image.
 + `proposal_objectness_logits` (array): numpy array with shape (K, ), which corresponds to the objectness
   logits of proposals in 'proposal_boxes'.
@@ -123,6 +125,9 @@ unavailable to you:
   A list of names for each instance/thing category.
   If you load a COCO format dataset, it will be automatically set by the function `load_coco_json`.
 
+* `thing_colors` (list[tuple(r, g, b)]): Pre-defined color (in [0, 255]) for each thing category.
+  Used for visualization. If not given, random colors are used.
+
 * `stuff_classes` (list[str]): Used by semantic and panoptic segmentation tasks.
   A list of names for each stuff category.
 
@@ -155,9 +160,25 @@ Some additional metadata that are specific to the evaluation of certain datasets
    You can just provide the [DatasetEvaluator](../modules/evaluation.html#detectron2.evaluation.DatasetEvaluator)
    for your dataset directly in your main script.
 
-NOTE: For background on the difference between "thing" and "stuff" categories, see
+NOTE: For background on the concept of "thing" and "stuff", see
 [On Seeing Stuff: The Perception of Materials by Humans and Machines](http://persci.mit.edu/pub_pdfs/adelson_spie_01.pdf).
 In detectron2, the term "thing" is used for instance-level tasks,
 and "stuff" is used for semantic segmentation tasks.
 Both are used in panoptic segmentation.
 
+
+### Update the Config for New Datasets
+
+Once you've registered the dataset, you can use the name of the dataset (e.g., "my_dataset" in
+example above) in `DATASETS.{TRAIN,TEST}`.
+There are other configs you might want to change to train or evaluate on new datasets:
+
+* `MODEL.ROI_HEADS.NUM_CLASSES` and `MODEL.RETINANET.NUM_CLASSES` are the number of thing classes
+	for R-CNN and RetinaNet models.
+* `MODEL.ROI_KEYPOINT_HEAD.NUM_KEYPOINTS` sets the number of keypoints for Keypoint R-CNN.
+  You'll also need to set [Keypoint OKS](http://cocodataset.org/#keypoints-eval)
+	with `TEST.KEYPOINT_OKS_SIGMAS` for evaluation.
+* `MODEL.SEM_SEG_HEAD.NUM_CLASSES` sets the number of stuff classes for Semantic FPN & Panoptic FPN.
+* If you're training Fast R-CNN (with precomputed proposals), `DATASETS.PROPOSAL_FILES_{TRAIN,TEST}`
+	need to match the datasts. The format of proposal files are documented
+	[here](../modules/data.html#detectron2.data.load_proposals_into_dataset).
